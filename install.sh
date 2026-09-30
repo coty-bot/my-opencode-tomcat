@@ -11,23 +11,23 @@ MARKER="$(basename "$SRC")"
 
 link_items() {
   local made=0 d f
-  if [ -d "$SRC/skills" ]; then
-    for d in "$SRC"/skills/*/; do
+  if [ -d "$SRC/opencode/skills" ]; then
+    for d in "$SRC"/opencode/skills/*/; do
       [ -d "$d" ] || continue
       ln -sfn "${d%/}" "$DEST/skills/$(basename "$d")" && made=$((made+1))
     done
   fi
-  if [ -d "$SRC/agents" ]; then
-    for f in "$SRC"/agents/*.md; do
+  if [ -d "$SRC/opencode/agents" ]; then
+    for f in "$SRC"/opencode/agents/*.md; do
       [ -f "$f" ] || continue
       ln -sfn "$f" "$DEST/agent/$(basename "$f")" && made=$((made+1))
     done
   fi
-  if [ -d "$SRC/plugins" ]; then
+  if [ -d "$SRC/opencode/plugins" ]; then
     # Top-level plugin files only. A plugin with local imports (a sibling
     # module dir, e.g.) needs those dirs linked too — or reference it by
     # absolute path in opencode.jsonc "plugin".
-    for f in "$SRC"/plugins/*.ts "$SRC"/plugins/*.js; do
+    for f in "$SRC"/opencode/plugins/*.ts "$SRC"/opencode/plugins/*.js; do
       [ -f "$f" ] || continue
       ln -sfn "$f" "$DEST/plugins/$(basename "$f")" && made=$((made+1))
     done
@@ -53,17 +53,17 @@ unlink_items() {
 case "${1:-}" in
   --uninstall)
     unlink_items
-    python3 "$SRC/merge_config.py" --marker "$MARKER" \
+    python3 "$SRC/opencode/merge_config.py" --marker "$MARKER" \
       --agents-md "$DEST/AGENTS.md" \
-      --config "$DEST/opencode.jsonc" --fragment-jsonc "$SRC/opencode.fragment.jsonc" \
+      --config "$DEST/opencode.jsonc" --fragment-jsonc "$SRC/opencode/opencode.fragment.jsonc" \
       --remove
     ;;
   "")
     mkdir -p "$DEST/skills" "$DEST/agent" "$DEST/plugins"
     link_items
-    python3 "$SRC/merge_config.py" --marker "$MARKER" \
-      --agents-md "$DEST/AGENTS.md" --fragment "$SRC/AGENTS.fragment.md" \
-      --config "$DEST/opencode.jsonc" --fragment-jsonc "$SRC/opencode.fragment.jsonc"
+    python3 "$SRC/opencode/merge_config.py" --marker "$MARKER" \
+      --agents-md "$DEST/AGENTS.md" --fragment "$SRC/opencode/AGENTS.fragment.md" \
+      --config "$DEST/opencode.jsonc" --fragment-jsonc "$SRC/opencode/opencode.fragment.jsonc"
     ;;
   *) echo "usage: $0 [--uninstall]" >&2; exit 2 ;;
 esac
