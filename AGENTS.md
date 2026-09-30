@@ -1,15 +1,17 @@
 # my-opencode-tomcat
 
 Apache Tomcat security-scan bucket for this machine's opencode setup: the
-campaign-lead agent, its batch worker, and the skills they run from.
+campaign-lead agent, its batch worker, the skills they run from, and the
+disclosure-verifier pipeline.
 
 ## Layout
 
-- `agents/tomcat-security-scan.md` — campaign lead (dispatches serial scan-worker batches)
-- `agents/scan-worker.md` — batch worker that writes defects reports + JUnit verification tests
-- `skills/tomcat-security-scan/` — single source of truth: fleet pattern, ledger format, report structure, test conventions, CodeQL/astnav recipes, security-model.md
-- `skills/java-ast-nav/` — tree-sitter-based Java call-graph navigation (astnav.py)
-- `skills/disclosure-pipeline-run/` — multi-model disclosure verification campaign launcher
+- `opencode/agents/tomcat-security-scan.md` — campaign lead (dispatches serial scan-worker batches)
+- `opencode/agents/scan-worker.md` — batch worker that writes defects reports + JUnit verification tests
+- `opencode/skills/tomcat-security-scan/` — single source of truth: fleet pattern, ledger format, report structure, test conventions, CodeQL/astnav recipes, security-model.md
+- `opencode/skills/java-ast-nav/` — tree-sitter-based Java call-graph navigation (astnav.py)
+- `opencode/skills/disclosure-pipeline-run/` — multi-model disclosure verification campaign launcher
+- `disclosure-verifier/` — the pipeline itself: LM Studio multi-model evaluators + adjudicator, mechanical checks, edit tracking (`run_pipeline.sh`)
 
 ## Install
 
@@ -22,7 +24,7 @@ re-run after adding/removing items. `./install.sh --uninstall` reverses it
 
 This repo is intentionally PRIVATE and carries real local values:
 
-- `agents/scan-worker.md`, `agents/tomcat-security-scan.md` — frontmatter `model:` lines (LM Studio model IDs)
+- `opencode/agents/scan-worker.md`, `opencode/agents/tomcat-security-scan.md` — frontmatter `model:` lines (LM Studio model IDs)
 - Paths to the local checkout at `/home/opencode/src/tomcat` and scan outputs under `/home/opencode/workspace/security-scans/tomcat`
 
 Do not make this repo public or push it to a shared remote without stripping

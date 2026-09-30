@@ -1,6 +1,6 @@
 ---
 name: disclosure-pipeline-run
-description: Use when kicking off, resuming, or checking the Tomcat disclosure-verifier campaign — multi-model LM Studio verification of security disclosures/tests/patches at /home/opencode/tools/disclosure-verifier (three independent evaluators + adjudicator, deterministic mechanical checks, edit tracking). Covers launch via run_pipeline.sh, out-dir conventions, polling protocol, measured timing, model roles, and known failure modes.
+description: Use when kicking off, resuming, or checking the Tomcat disclosure-verifier campaign — multi-model LM Studio verification of security disclosures/tests/patches at /home/opencode/src/my-opencode-tomcat/disclosure-verifier (three independent evaluators + adjudicator, deterministic mechanical checks, edit tracking). Covers launch via run_pipeline.sh, out-dir conventions, polling protocol, measured timing, model roles, and known failure modes.
 ---
 
 # Disclosure Pipeline Run
@@ -31,16 +31,16 @@ determinism: temp=0.0, top_p=1.0, seed=1337 (override via CLI flags).
 
 ```bash
 # full campaign (all disclosures/*.md), fresh out-dir recommended:
-bash /home/opencode/tools/disclosure-verifier/run_pipeline.sh \
+bash /home/opencode/src/my-opencode-tomcat/disclosure-verifier/run_pipeline.sh \
   --out-dir /home/opencode/workspace/security-scans/tomcat/verification-run<N>-$(date +%Y%m%d-%H%M%S)
 
 # subset of slugs (positional args, with or without .md):
-bash /home/opencode/tools/disclosure-verifier/run_pipeline.sh <slug> [slug ...]
+bash /home/opencode/src/my-opencode-tomcat/disclosure-verifier/run_pipeline.sh <slug> [slug ...]
 ```
 
 - The wrapper unloads every loaded model first (clean t=0), starts the verifier
   detached in its own session, and writes `output/pipeline-status.json`
-  (`pid`, `log`) plus a timestamped log under `/home/opencode/tools/disclosure-verifier/output/`.
+  (`pid`, `log`) plus a timestamped log under `/home/opencode/src/my-opencode-tomcat/disclosure-verifier/output/`.
 - **Use a fresh `--out-dir` per campaign** to preserve prior results. Within an
   out-dir, re-runs overwrite per-slug dirs and merge into `all-summary.json`
   keyed by slug (partial re-runs update only their rows). Default out-dir is
