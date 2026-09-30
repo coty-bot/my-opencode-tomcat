@@ -361,3 +361,154 @@ def test_split_sections():
     secs = split_sections("# H1\nintro\n## A\nalpha\n## B\nbeta")
     assert set(secs) == {"A", "B"}
     assert secs["A"].strip() == "alpha"
+
+
+# ---------------------------------------------------------------- config
+
+VALID_CONFIG = """\
+repo_root = "/tmp/tomcat"
+disclosures_dir = "/tmp/campaign/disclosures"
+security_model = "/tmp/campaign/SECURITY-MODEL.md"
+jar_dir = "/tmp/libs"
+
+[lmstudio]
+url = "http://127.0.0.1:1234"
+
+[generation]
+seed = 1337
+temperature = 0.0
+top_p = 1.0
+max_tokens_eval = 8192
+max_tokens_final = 16384
+
+[pipeline]
+run_tests = true
+postpatch = true
+
+[[evaluators]]
+name = "27b"
+model_key = "qwen/qwen3.8-27b"
+ctx_tokens = 65536
+input_budget_chars = 140_000
+
+[[evaluators]]
+name = "7b"
+model_key = "vulnllm-r-7b"
+ctx_tokens = 32768
+input_budget_chars = 80_000
+
+[[evaluators]]
+name = "cyber"
+model_key = "cyber-model-key"
+ctx_tokens = 98304
+input_budget_chars = 140_000
+
+[adjudicator]
+model_key = "qwen/qwen3.8-27b"
+ctx_tokens = 65536
+input_budget_chars = 140_000
+"""
+
+
+def _write_config(tmp_path: Path, text: str) -> Path:
+    p = tmp_path / "config.toml"
+    p.write_text(text, encoding="utf-8")
+    return p
+
+
+def test_load_config_full(tmp_path):
+    from disclosure_verifier.config import load_config
+
+    cfg = load_config(_write_config(tmp_path, VALID_CONFIG))
+    assert cfg.repo_root == Path("/tmp/tomcat")
+    assert cfg.disclosures_dir == Path("/tmp/campaign/disclosures")
+    assert cfg.security_model == Path("/tmp/campaign/SECURITY-MODEL.md")
+    assert cfg.jar_dir == Path("/tmp/libs")
+    assert cfg.lmstudio_url == "http://127.0.0.1:1234"
+    assert [e.name for e in cfg.evaluators] == ["27b", "7b", "cyber"]
+    assert cfg.evaluators[1].model_key == "vulnllm-r-7b"
+    assert cfg.evaluators[1].ctx_tokens == 32768
+    assert cfg.adjudicator_model == "qwen/qwen3.8-27b"
+    assert cfg.seed == 1337 and cfg.run_tests is True and cfg.postpatch is True
+
+
+def test_load_config_missing_required_key(tmp_path):
+    from disclosure_verifier.config import ConfigError, load_config
+
+    text = VALID_CONFIG.replace('repo_root = "/tmp/tomcat"\n', "")
+    with pytest.raises(ConfigError, match="repo_root"):
+        load_config(_write_config(tmp_path, text))
+
+
+def test_load_config_duplicate_evaluator_name(tmp_path):
+    from disclosure_verifier.config import ConfigError, load_config
+
+    text = VALID_CONFIG.replace('name = "cyber"', 'name = "27b"')
+    with pytest.raises(ConfigError, match="duplicate"):
+        load_config(_write_config(tmp_path, text))
+
+
+def test_load_config_bad_type(tmp_path):
+    from disclosure_verifier.config import ConfigError, load_config
+
+    text = VALID_CONFIG.replace("ctx_tokens = 32768", 'ctx_tokens = "32768"')
+    with pytest.raises(ConfigError, match="integer"):
+        load_config(_write_config(tmp_path, text))
+
+
+def test_load_config_missing_file():
+    from disclosure_verifier.config import ConfigError, load_config
+
+    with pytest.raises(ConfigError, match="not found"):
+        load_config("/nonexistent/config.toml")
+
+
+def test_select_evaluators_order_and_subset(tmp_path):
+    from disclosure_verifier.config import load_config, select_evaluators
+
+    cfg = load_config(_write_config(tmp_path, VALID_CONFIG))
+    # All configured, in config-file order.
+    assert [s.name for s in select_evaluators(cfg)] == ["27b", "7b", "cyber"]
+    # Subset keeps config order regardless of request order; specs carry the values.
+    subset = select_evaluators(cfg, ["cyber", "27b"])
+    assert [s.name for s in subset] == ["27b", "cyber"]
+    assert subset[0].model_key == "qwen/qwen3.8-27b" and subset[0].ctx_tokens == 65536
+
+
+def test_select_evaluators_unknown_name(tmp_path):
+    from disclosure_verifier.config import ConfigError, load_config, select_evaluators
+
+    cfg = load_config(_write_config(tmp_path, VALID_CONFIG))
+    with pytest.raises(ConfigError, match="unknown evaluator"):
+        select_evaluators(cfg, ["nope"])
+    with pytest.raises(ConfigError, match="no evaluators selected"):
+        select_evaluators(cfg, [])
+
+
+def test_apply_evaluator_overrides(tmp_path):
+    from disclosure_verifier.config import (
+        ConfigError,
+        apply_evaluator_overrides,
+        load_config,
+    )
+
+    cfg = load_config(_write_config(tmp_path, VALID_CONFIG))
+    new_cfg = apply_evaluator_overrides(
+        cfg, models={"7b": "other-7b"}, ctx_tokens={"cyber": 4096}
+    )
+    by_name = {e.name: e for e in new_cfg.evaluators}
+    assert by_name["7b"].model_key == "other-7b"
+    assert by_name["cyber"].ctx_tokens == 4096
+    assert by_name["27b"] == cfg.evaluators[0]  # untouched
+    with pytest.raises(ConfigError, match="unknown evaluator"):
+        apply_evaluator_overrides(cfg, models={"nope": "x"})
+
+
+def test_shipped_config_loads():
+    """The committed config.toml at the tool root must always parse and validate."""
+    from disclosure_verifier.config import load_config
+
+    cfg = load_config()  # DEFAULT_CONFIG_PATH
+    assert len(cfg.evaluators) >= 1
+    assert all(e.model_key and e.ctx_tokens > 0 for e in cfg.evaluators)
+    assert cfg.adjudicator_model and cfg.lmstudio_url

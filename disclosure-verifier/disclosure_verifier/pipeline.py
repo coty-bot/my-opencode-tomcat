@@ -78,19 +78,12 @@ class EvaluatorSpec:
 
 @dataclass
 class PipelineConfig:
-    evaluators: tuple[EvaluatorSpec, ...] = (
-        EvaluatorSpec("27b", "qwen/qwen3.8-27b", 65536, 140_000),
-        EvaluatorSpec("7b", "vulnllm-r-7b", 32768, 80_000),
-        EvaluatorSpec(
-            "cyber",
-            "ravenx-cyberagent-qwen3.6-35b-a3b-opus-4.7-openmythos-pentester-bughunter-rath",
-            98304,
-            140_000,
-        ),
-    )
-    adjudicator_model: str = "qwen/qwen3.8-27b"
-    adjudicator_ctx: int = 65536
-    adjudicator_input_budget_chars: int = 140_000
+    # Model keys, context lengths and input budgets come from config.toml
+    # (see disclosure_verifier/config.py) — no machine-local defaults here.
+    evaluators: tuple[EvaluatorSpec, ...]
+    adjudicator_model: str
+    adjudicator_ctx: int
+    adjudicator_input_budget_chars: int
     seed: int = 1337
     temperature: float = 0.0
     top_p: float = 1.0
@@ -107,7 +100,7 @@ class PipelineConfig:
     run_tests: bool = True
     postpatch: bool = True
     max_attempts: int = 3
-    jar_dir: str | None = "/home/opencode/tomcat-build-libs"
+    jar_dir: str | None = None
 
 
 @dataclass

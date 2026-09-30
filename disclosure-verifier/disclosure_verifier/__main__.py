@@ -1,15 +1,25 @@
-"""CLI: verify one or all Tomcat security disclosures (independent evaluator models + adjudicator)."""
+"""CLI: verify one or all Tomcat security disclosures (independent evaluator models + adjudicator).
+
+All machine-local values (paths, LM Studio URL, model keys, context lengths,
+input budgets, generation params) come from config.toml at the tool root; CLI
+flags override them for a single run. See disclosure_verifier/config.py for the
+schema and validation rules.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 
-DEFAULT_REPO = "/home/opencode/src/tomcat"
-DEFAULT_SECURITY_MODEL = (
-    "/home/opencode/workspace/security-scans/tomcat/SECURITY-MODEL.md"
+from .config import (
+    DEFAULT_CONFIG_PATH,
+    ConfigError,
+    apply_evaluator_overrides,
+    load_config,
+    select_evaluators,
 )
 
 
@@ -18,63 +28,115 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "slugs",
         nargs="*",
-        help="disclosure slugs to verify (default: all *.md in --disclosures-dir)",
+        help="disclosure slugs to verify (default: all *.md in the configured disclosures dir)",
     )
-    p.add_argument("--repo-root", default=DEFAULT_REPO)
+    p.add_argument("--config", default=str(DEFAULT_CONFIG_PATH), help="path to config.toml")
+
+    # --- overrides for individual config values ------------------------------
+    p.add_argument("--repo-root", help="override repo_root (Tomcat checkout)")
+    p.add_argument("--disclosures-dir", help="override disclosures_dir")
     p.add_argument(
-        "--disclosures-dir",
-        default="/home/opencode/workspace/security-scans/tomcat/disclosures",
+        "--out-dir",
+        default=None,
+        help="output root (default: <campaign>/verification, i.e. the parent of the disclosures dir)",
     )
-    p.add_argument("--out-dir", default=None, help="default: <campaign>/verification")
-    p.add_argument("--security-model", default=DEFAULT_SECURITY_MODEL)
-    p.add_argument("--model-27b", default="qwen/qwen3.8-27b")
-    p.add_argument("--model-7b", default="vulnllm-r-7b")
-    p.add_argument(
-        "--model-cyber",
-        default=(
-            "ravenx-cyberagent-qwen3.6-35b-a3b-opus-4.7-openmythos-pentester-bughunter-rath"
-        ),
-    )
+    p.add_argument("--security-model", help="override security_model path")
+    p.add_argument("--jar-dir", help="override jar_dir (empty string disables test execution)")
+    p.add_argument("--lmstudio-url", help="override [lmstudio] url")
+
+    # Per-evaluator overrides, keyed by the evaluator `name` in config.toml.
+    for name in ("27b", "7b", "cyber"):
+        p.add_argument(f"--model-{name}", help=f"override the {name} evaluator's model key")
+        p.add_argument(f"--ctx-{name}", type=int, help=f"override the {name} evaluator's ctx_tokens")
+        p.add_argument(
+            f"--input-budget-{name}-chars",
+            type=int,
+            help=f"override the {name} evaluator's input_budget_chars",
+        )
     p.add_argument(
         "--evaluators",
-        default="27b,7b,cyber",
-        help=(
-            "comma-separated evaluator stages to run (subset of: 27b,7b,cyber); "
-            "always runs in canonical order; the adjudicator is separate"
-        ),
+        default=None,
+        help="comma-separated evaluator names to run (default: all configured; stage order follows config.toml)",
     )
-    p.add_argument("--ctx-27b", type=int, default=65536)
-    p.add_argument("--ctx-7b", type=int, default=32768)
-    p.add_argument("--ctx-cyber", type=int, default=98304)
-    p.add_argument("--seed", type=int, default=1337)
-    p.add_argument("--temperature", type=float, default=0.0)
-    p.add_argument("--top-p", type=float, default=1.0)
-    p.add_argument("--max-tokens-eval", type=int, default=8192)
-    p.add_argument("--max-tokens-final", type=int, default=16384)
-    p.add_argument("--input-budget-27b-chars", type=int, default=140_000)
-    p.add_argument("--input-budget-7b-chars", type=int, default=80_000)
-    p.add_argument("--input-budget-cyber-chars", type=int, default=140_000)
-    p.add_argument("--jar-dir", default="/home/opencode/tomcat-build-libs")
+
+    # Generation / pipeline overrides.
+    p.add_argument("--seed", type=int)
+    p.add_argument("--temperature", type=float)
+    p.add_argument("--top-p", type=float, dest="top_p")
+    p.add_argument("--max-tokens-eval", type=int)
+    p.add_argument("--max-tokens-final", type=int)
     p.add_argument("--no-tests", action="store_true", help="skip JUnit compile/run stages")
     p.add_argument(
         "--no-postpatch", action="store_true", help="skip the apply-patch-and-rerun-tests stage"
     )
-    p.add_argument(
-        "--lmstudio-url", default="http://127.0.0.1:1234"
-    )
     return p
+
+
+def _apply_overrides(cfg, args):
+    """Fold CLI overrides into the loaded config; raise ConfigError on bad names."""
+    if args.repo_root is not None:
+        cfg = replace(cfg, repo_root=Path(args.repo_root))
+    if args.disclosures_dir is not None:
+        cfg = replace(cfg, disclosures_dir=Path(args.disclosures_dir))
+    if args.security_model is not None:
+        cfg = replace(cfg, security_model=Path(args.security_model))
+    if args.jar_dir is not None:
+        cfg = replace(cfg, jar_dir=Path(args.jar_dir) if args.jar_dir else None)
+    if args.lmstudio_url is not None:
+        cfg = replace(cfg, lmstudio_url=args.lmstudio_url)
+
+    for flag in ("seed", "temperature", "top_p", "max_tokens_eval", "max_tokens_final"):
+        val = getattr(args, flag)
+        if val is not None:
+            cfg = replace(cfg, **{flag: val})
+
+    return apply_evaluator_overrides(
+        cfg,
+        models={n: v for n, v in (
+            ("27b", args.model_27b),
+            ("7b", args.model_7b),
+            ("cyber", args.model_cyber),
+        ) if v is not None},
+        ctx_tokens={n: v for n, v in (
+            ("27b", args.ctx_27b),
+            ("7b", args.ctx_7b),
+            ("cyber", args.ctx_cyber),
+        ) if v is not None},
+        input_budget_chars={n: v for n, v in (
+            ("27b", args.input_budget_27b_chars),
+            ("7b", args.input_budget_7b_chars),
+            ("cyber", args.input_budget_cyber_chars),
+        ) if v is not None},
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     from .lmstudio import LmStudioClient, LmStudioRunner, ModelLifecycle
-    from .pipeline import EvaluatorSpec, PipelineConfig, verify_disclosure
     from .parse_disclosure import parse_disclosure
+    from .pipeline import PipelineConfig, verify_disclosure
 
-    disclosures_dir = Path(args.disclosures_dir)
+    try:
+        cfg = load_config(args.config)
+        cfg = _apply_overrides(cfg, args)
+        requested = (
+            [n.strip() for n in args.evaluators.split(",") if n.strip()]
+            if args.evaluators is not None
+            else None
+        )
+        evaluators = select_evaluators(cfg, requested)
+    except ConfigError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+
+    disclosures_dir = cfg.disclosures_dir
     if not disclosures_dir.is_dir():
         print(f"error: disclosures dir not found: {disclosures_dir}", file=sys.stderr)
+        return 2
+    security_model_path = cfg.security_model
+    if not security_model_path.is_file():
+        print(f"error: security model file not found: {security_model_path}", file=sys.stderr)
         return 2
 
     md_files = sorted(disclosures_dir.glob("*.md"))
@@ -90,43 +152,25 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     out_root = Path(args.out_dir) if args.out_dir else disclosures_dir.parent / "verification"
-    security_model_text = Path(args.security_model).read_text(encoding="utf-8")
-    repo_root = Path(args.repo_root)
+    security_model_text = security_model_path.read_text(encoding="utf-8")
+    repo_root = cfg.repo_root
 
-    spec_by_name = {
-        "27b": EvaluatorSpec("27b", args.model_27b, args.ctx_27b, args.input_budget_27b_chars),
-        "7b": EvaluatorSpec("7b", args.model_7b, args.ctx_7b, args.input_budget_7b_chars),
-        "cyber": EvaluatorSpec(
-            "cyber", args.model_cyber, args.ctx_cyber, args.input_budget_cyber_chars
-        ),
-    }
-    requested = [n.strip() for n in args.evaluators.split(",") if n.strip()]
-    unknown = [n for n in requested if n not in spec_by_name]
-    if unknown:
-        print(
-            f"error: unknown evaluator(s) {unknown}; choose from {sorted(spec_by_name)}",
-            file=sys.stderr,
-        )
-        return 2
-    if not requested:
-        print("error: --evaluators must name at least one evaluator", file=sys.stderr)
-        return 2
-    # Canonical order regardless of input order -> deterministic stage letters.
-    evaluators = tuple(spec_by_name[n] for n in ("27b", "7b", "cyber") if n in requested)
-
-    cfg = PipelineConfig(
+    pipeline_cfg = PipelineConfig(
         evaluators=evaluators,
-        seed=args.seed,
-        temperature=args.temperature,
-        top_p=args.top_p,
-        max_tokens_eval=args.max_tokens_eval,
-        max_tokens_final=args.max_tokens_final,
-        run_tests=not args.no_tests,
-        postpatch=not args.no_postpatch,
-        jar_dir=args.jar_dir or None,
+        adjudicator_model=cfg.adjudicator_model,
+        adjudicator_ctx=cfg.adjudicator_ctx,
+        adjudicator_input_budget_chars=cfg.adjudicator_input_budget_chars,
+        seed=cfg.seed,
+        temperature=cfg.temperature,
+        top_p=cfg.top_p,
+        max_tokens_eval=cfg.max_tokens_eval,
+        max_tokens_final=cfg.max_tokens_final,
+        run_tests=(not args.no_tests) and cfg.run_tests,
+        postpatch=(not args.no_postpatch) and cfg.postpatch,
+        jar_dir=str(cfg.jar_dir) if cfg.jar_dir else None,
     )
 
-    client = LmStudioClient(base_url=args.lmstudio_url)
+    client = LmStudioClient(base_url=cfg.lmstudio_url)
     lifecycle = ModelLifecycle(client)
     # The runner evicts intruding models before every call so each generation
     # starts with exactly one model resident.
@@ -134,10 +178,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         available = {row["key"] for row in client.list_models()}
     except Exception as e:  # noqa: BLE001
-        print(f"error: cannot reach LM Studio at {args.lmstudio_url}: {e}", file=sys.stderr)
+        print(f"error: cannot reach LM Studio at {cfg.lmstudio_url}: {e}", file=sys.stderr)
         return 2
 
-    wanted_models = [s.model_key for s in cfg.evaluators] + [cfg.adjudicator_model]
+    wanted_models = [s.model_key for s in pipeline_cfg.evaluators] + [pipeline_cfg.adjudicator_model]
     missing_models = [k for k in dict.fromkeys(wanted_models) if k not in available]
     if missing_models:
         print(f"error: model(s) not loaded/known to LM Studio: {missing_models}", file=sys.stderr)
@@ -162,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"== verifying {bundle.slug} -> {out_dir}", file=sys.stderr)
             try:
                 summary = verify_disclosure(
-                    bundle, cfg, runner, lifecycle, out_dir, security_model_text, repo_root
+                    bundle, pipeline_cfg, runner, lifecycle, out_dir, security_model_text, repo_root
                 )
             except Exception as e:  # noqa: BLE001 - keep the campaign alive
                 print(f"!! {bundle.slug} failed: {e!r}", file=sys.stderr)

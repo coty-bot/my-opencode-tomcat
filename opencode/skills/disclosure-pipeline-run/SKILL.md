@@ -111,8 +111,11 @@ per token (3B active); the 27b Q5_K_P MTP build is also quick.
 
 ## Changing models / params
 
-CLI flags: `--evaluator-a`, `--evaluator-b`, `--evaluator-c`,
-`--adjudicator-model`, `--max-tokens-eval`, `--max-tokens-final`, `--seed`,
-`--temperature`, `--top-p`, `--no-tests`, `--no-postpatch`. Defaults live in
-`disclosure_verifier/config.py`. Model keys must be known to LM Studio at
-127.0.0.1:1234 (checked up front; missing models abort with the available list).
+All machine-local values live in `config.toml` at the tool root (`/home/opencode/src/my-opencode-tomcat/disclosure-verifier/config.toml`): paths, LM Studio URL, per-evaluator model keys/context lengths/input budgets (stage order follows the `[[evaluators]]` list), adjudicator, and generation params. Edit it for permanent changes; CLI flags override individual values for a single run:
+
+- `--config <path>` — alternate config file
+- Per evaluator (name = `name` field in config.toml): `--model-<name>`, `--ctx-<name>`, `--input-budget-<name>-chars`; `--evaluators 27b,cyber` runs a subset (stage letters follow config order)
+- Paths/URL: `--repo-root`, `--disclosures-dir`, `--out-dir`, `--security-model`, `--jar-dir` (empty string disables test execution), `--lmstudio-url`
+- Generation/pipeline: `--seed`, `--temperature`, `--top-p`, `--max-tokens-eval`, `--max-tokens-final`, `--no-tests`, `--no-postpatch`
+
+Model keys must be known to LM Studio at the configured URL (checked up front; missing models abort with the available list).

@@ -25,12 +25,26 @@ if [[ ${1:-} == "--wait" ]]; then WAIT=1; shift; fi
 #    Non-fatal: if LM Studio is unreachable, let the pipeline report that itself.
 python3 - "$TOOL_DIR" <<'EOF' || echo "warning: could not unload models (LM Studio unreachable?)" >&2
 import sys
+from pathlib import Path
 
-sys.path.insert(0, sys.argv[1])
+tool_dir = Path(sys.argv[1])
+sys.path.insert(0, str(tool_dir))
+
+# Read the LM Studio URL from config.toml so this preload matches the pipeline.
+url = None
+cfg_file = tool_dir / "config.toml"
+if cfg_file.is_file():
+    try:
+        import tomllib
+
+        url = tomllib.loads(cfg_file.read_text(encoding="utf-8")).get("lmstudio", {}).get("url")
+    except Exception as e:  # noqa: BLE001 - fall back to the client default URL
+        print(f"warning: could not read {cfg_file}: {e}", file=sys.stderr)
+
 from disclosure_verifier.lmstudio import LmStudioClient
 
 try:
-    c = LmStudioClient()
+    c = LmStudioClient(base_url=url) if url else LmStudioClient()
     for inst in c.loaded_instances():
         try:
             c.unload_instance(inst.instance_id)
