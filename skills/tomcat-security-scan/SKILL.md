@@ -11,7 +11,7 @@ The campaign runs as two agents (defined in `~/.config/opencode/agent/`): a prim
 
 ## Environment facts (verified)
 
-- Repo: `/home/opencode/src/tomcat`. No Maven. Java 25 (`javac`/`java` on PATH).
+- Repo: `/home/opencode/src/tomcat`. No Maven. Java 25 (`javac`/`java` on PATH). If it doesn't exist, clone it first: `git clone https://github.com/apache/tomcat /home/opencode/src/tomcat` (default branch is the current dev line; the campaign tracks `origin/main`).
 - Compiled classes live in `output/classes`, test classes in `output/testclasses` (ant build outputs, untracked/gitignored).
 - Dependency jars: `/home/opencode/tomcat-build-libs/` (junit-4.13.2, hamcrest, easymock, bouncycastle, ...).
 - Classpath recipe:
