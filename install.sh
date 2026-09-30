@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Install this bucket's agents/skills/plugins into the opencode config dir as
-# symlinks, and merge AGENTS.fragment.md into the global AGENTS.md.
+# symlinks, merge AGENTS.fragment.md into the global AGENTS.md, and deep-merge
+# opencode.fragment.jsonc (permissions) into opencode.jsonc.
 # Idempotent; re-run after adding/removing items. --uninstall reverses it.
 set -euo pipefail
 
@@ -52,13 +53,17 @@ unlink_items() {
 case "${1:-}" in
   --uninstall)
     unlink_items
-    python3 "$SRC/merge_config.py" --agents-md "$DEST/AGENTS.md" --marker "$MARKER"
+    python3 "$SRC/merge_config.py" --marker "$MARKER" \
+      --agents-md "$DEST/AGENTS.md" \
+      --config "$DEST/opencode.jsonc" --fragment-jsonc "$SRC/opencode.fragment.jsonc" \
+      --remove
     ;;
   "")
     mkdir -p "$DEST/skills" "$DEST/agent" "$DEST/plugins"
     link_items
-    python3 "$SRC/merge_config.py" --agents-md "$DEST/AGENTS.md" --marker "$MARKER" \
-      --fragment "$SRC/AGENTS.fragment.md"
+    python3 "$SRC/merge_config.py" --marker "$MARKER" \
+      --agents-md "$DEST/AGENTS.md" --fragment "$SRC/AGENTS.fragment.md" \
+      --config "$DEST/opencode.jsonc" --fragment-jsonc "$SRC/opencode.fragment.jsonc"
     ;;
   *) echo "usage: $0 [--uninstall]" >&2; exit 2 ;;
 esac
