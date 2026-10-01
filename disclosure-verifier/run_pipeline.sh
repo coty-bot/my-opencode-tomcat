@@ -70,7 +70,20 @@ if ! kill -0 "$PID" 2>/dev/null; then
     exit 1
 fi
 
-SLUG_JSON=$(python3 -c 'import json, sys; print(json.dumps(sys.argv[1:]))' "$@")
+# Record only positional slug args (skip flags and their values) so the
+# status file stays readable; full argv is still visible in the log header.
+SLUGS=()
+skip_next=0
+for a in "$@"; do
+  if [[ $skip_next == 1 ]]; then skip_next=0; continue; fi
+  case "$a" in
+    --config|--repo-root|--disclosures-dir|--out-dir|--security-model|--jar-dir|--lmstudio-url|--evaluators|--seed|--temperature|--top-p|--max-tokens-eval|--max-tokens-final) skip_next=1 ;;
+    --model-*|--ctx-*|--input-budget-*-chars) skip_next=1 ;;
+    -*) : ;;
+    *) SLUGS+=("$a") ;;
+  esac
+done
+SLUG_JSON=$(printf '%s\n' ${SLUGS[@]+"${SLUGS[@]}"} | python3 -c 'import json, sys; print(json.dumps([l for l in (x.strip() for x in sys.stdin) if l]))')
 cat >"$OUT_DIR/pipeline-status.json" <<EOF
 {"pid": $PID, "log": "$LOG", "launched_at": "$(date -Iseconds)", "slugs": $SLUG_JSON}
 EOF

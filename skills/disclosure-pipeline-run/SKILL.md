@@ -1,6 +1,6 @@
 ---
 name: disclosure-pipeline-run
-description: Use when kicking off, resuming, or checking the Tomcat disclosure-verifier campaign — multi-model LM Studio verification of security disclosures/tests/patches at /home/opencode/src/my-opencode-tomcat/disclosure-verifier (three independent evaluators + adjudicator, deterministic mechanical checks, edit tracking). Covers launch via run_pipeline.sh, out-dir conventions, polling protocol, measured timing, model roles, and known failure modes.
+description: Use when kicking off, resuming, or checking the Tomcat disclosure-verifier campaign — multi-model LM Studio verification of security disclosures/tests/patches at /home/opencode/src/my-opencode-tomcat/disclosure-verifier (three independent evaluators + adjudicator, deterministic mechanical checks, edit tracking). Covers launch via run_pipeline.sh or the custom tools (disclosure-pipeline_launch/_status/_results), out-dir conventions, polling protocol, measured timing, model roles, and known failure modes.
 ---
 
 # Disclosure Pipeline Run
@@ -9,6 +9,24 @@ Verifies each Tomcat security disclosure against the project trust model using
 LM Studio models plus deterministic mechanical checks, then adjudicates a final
 ruling (security_issue / hardening / bug), CVSS score, and accuracy edits to
 the disclosure/tests/patches.
+
+## Custom tools (preferred interface)
+
+The repo ships `tools/disclosure-pipeline.ts` (symlinked into the opencode
+config by `install.sh`), exposing three tools that wrap this protocol:
+
+- `disclosure-pipeline_launch(slugs?, out_dir?)` — runs `run_pipeline.sh`
+  detached and returns pid/log/status-file. Unloads all LM Studio models first,
+  including the agent's own (auto-reloads on demand in later turns).
+- `disclosure-pipeline_status(tail_lines?)` — pid liveness, elapsed time,
+  detected out-dir, per-slug stage progress, log tail. Read-only; safe to poll.
+- `disclosure-pipeline_results(slug?, out_dir?)` — all-summary.json rows for a
+  run (classification / legit_security_finding / CVSS / edits_status), plus the
+  full report.md when slug is given. Defaults to the latest launch's out-dir.
+
+Use these instead of hand-running bash; fall back to the raw commands below if
+the tools are missing (e.g. config not reinstalled) or for flags they don't
+expose (`--wait`, per-evaluator overrides, `--no-tests`, …).
 
 ## What one disclosure run does
 
