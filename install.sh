@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install this bucket's agents/skills/tools/plugins into the opencode config dir as
+# Install this bucket's agents/skills/tools/plugins/commands into the opencode config dir as
 # symlinks, merge AGENTS.fragment.md into the global AGENTS.md, and deep-merge
 # opencode.fragment.jsonc (permissions) into opencode.jsonc.
 # Idempotent; re-run after adding/removing items. --uninstall reverses it.
@@ -30,6 +30,12 @@ link_items() {
       ln -sfn "$f" "$DEST/tools/$(basename "$f")" && made=$((made+1))
     done
   fi
+  if [ -d "$SRC/commands" ]; then
+    for f in "$SRC"/commands/*.md; do
+      [ -f "$f" ] || continue
+      ln -sfn "$f" "$DEST/command/$(basename "$f")" && made=$((made+1))
+    done
+  fi
   if [ -d "$SRC/plugins" ]; then
     # Top-level plugin files only. A plugin with local imports (a sibling
     # module dir, e.g.) needs those dirs linked too — or reference it by
@@ -44,7 +50,7 @@ link_items() {
 
 unlink_items() {
   local removed=0 base p tgt
-  for base in skills agent tools plugins; do
+  for base in skills agent tools command plugins; do
     [ -d "$DEST/$base" ] || continue
     for p in "$DEST/$base"/*; do
       [ -L "$p" ] || continue
@@ -66,7 +72,7 @@ case "${1:-}" in
       --remove
     ;;
   "")
-    mkdir -p "$DEST/skills" "$DEST/agent" "$DEST/tools" "$DEST/plugins"
+    mkdir -p "$DEST/skills" "$DEST/agent" "$DEST/tools" "$DEST/command" "$DEST/plugins"
     link_items
     python3 "$SRC/merge_config.py" --marker "$MARKER" \
       --agents-md "$DEST/AGENTS.md" --fragment "$SRC/AGENTS.fragment.md" \
