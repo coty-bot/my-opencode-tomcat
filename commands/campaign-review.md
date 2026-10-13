@@ -11,7 +11,7 @@ $ARGUMENTS
 Interpret the arguments as:
 
 1. Campaign directory: first argument.
-2. Tomcat checkout: second argument, or `/home/csutherl/source/tomcat` if omitted.
+2. Tomcat checkout: second argument, or `/home/opencode/source/tomcat` if omitted.
 
 If either path is ambiguous, ask before proceeding.
 

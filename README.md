@@ -50,11 +50,11 @@ After `./install.sh` and restarting opencode, run:
 Example:
 
 ```text
-/campaign-review /home/csutherl/source/local-scanner-findings/1-oct-tomcat /home/csutherl/source/tomcat
+/campaign-review /home/opencode/source/local-scanner-findings/1-oct-tomcat /home/opencode/source/tomcat
 ```
 
 If the Tomcat checkout argument is omitted, the command instructs the agent to use
-`/home/csutherl/source/tomcat`.
+`/home/opencode/source/tomcat`.
 
 The command tells the agent to:
 
