@@ -1,4 +1,8 @@
 output/
+config.toml
 __pycache__/
 .pytest_cache/
 *.pyc
+*.bak
+*.bak-*
+*.orig

@@ -1,2 +1,10 @@
 __pycache__/
 *.pyc
+
+# Local machine configuration
+disclosure-verifier/config.toml
+
+# Backups generated while editing disclosures/reports
+*.bak
+*.bak-*
+*.orig

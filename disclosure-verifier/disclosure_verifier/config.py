@@ -100,7 +100,11 @@ def load_config(path: Path | str = DEFAULT_CONFIG_PATH) -> VerifierConfig:
     """Load and strictly validate config.toml."""
     p = Path(path)
     if not p.is_file():
-        raise ConfigError(f"config file not found: {p}")
+        hint = ""
+        if p == DEFAULT_CONFIG_PATH:
+            example = p.with_name("config.example.toml")
+            hint = f"; create one with: cp {example} {p}"
+        raise ConfigError(f"config file not found: {p}{hint}")
     try:
         raw = tomllib.loads(p.read_text(encoding="utf-8"))
     except (tomllib.TOMLDecodeError, OSError) as e:

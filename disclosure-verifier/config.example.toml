@@ -1,0 +1,59 @@
+# disclosure-verifier configuration example.
+#
+# Copy this file to config.toml and edit the paths/model keys for your machine:
+#
+#   cp config.example.toml config.toml
+#
+# CLI flags override individual values for a single run (see
+# `python3 -m disclosure_verifier --help`). Stage order (A, B, C, ...)
+# follows the [[evaluators]] order below.
+
+repo_root = "/path/to/apache-tomcat-checkout"
+disclosures_dir = "/path/to/campaign/disclosures"
+security_model = "/path/to/campaign/SECURITY-MODEL.md"
+# JARs for scratch-copy JUnit runs; omit this key to skip external jars, or use
+# --jar-dir "" / --no-tests when you only want prose/patch/model verification.
+jar_dir = "/path/to/tomcat-build-libs"
+
+[lmstudio]
+url = "http://127.0.0.1:1234"
+
+[generation]
+# Fixed for determinism.
+seed = 1337
+temperature = 0.0
+top_p = 1.0
+max_tokens_eval = 8192
+max_tokens_final = 16384
+
+[pipeline]
+run_tests = true
+postpatch = true
+
+# Stage A — primary evaluator.
+[[evaluators]]
+name = "27b"
+model_key = "your-primary-model-key"
+ctx_tokens = 65536
+input_budget_chars = 140_000
+
+# Stage B — small independent second opinion.
+[[evaluators]]
+name = "7b"
+model_key = "your-second-opinion-model-key"
+ctx_tokens = 32768
+input_budget_chars = 80_000
+
+# Stage C — optional adversarial vulnerability-hunting model; this model should
+# argue hard for exploitability so the adjudicator sees the strongest case.
+[[evaluators]]
+name = "cyber"
+model_key = "your-adversarial-model-key"
+ctx_tokens = 98304
+input_budget_chars = 140_000
+
+# Stage D — final authority; sees all evaluator verdicts + mechanical facts.
+[adjudicator]
+model_key = "your-adjudicator-model-key"
+ctx_tokens = 65536
+input_budget_chars = 140_000

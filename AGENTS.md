@@ -28,5 +28,8 @@ This repo is intentionally PRIVATE and carries real local values:
 - `agents/scan-worker.md`, `agents/tomcat-security-scan.md` — frontmatter `model:` lines (LM Studio model IDs)
 - Paths to the local checkout at `/home/opencode/src/tomcat` and scan outputs under `/home/opencode/workspace/security-scans/tomcat`
 
+The disclosure verifier's real `config.toml` is local-only/gitignored; the repo
+keeps `disclosure-verifier/config.example.toml` as the editable starting point.
+
 Do not make this repo public or push it to a shared remote without stripping
-those values first.
+remaining local values first.

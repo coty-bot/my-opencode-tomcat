@@ -504,11 +504,11 @@ def test_apply_evaluator_overrides(tmp_path):
         apply_evaluator_overrides(cfg, models={"nope": "x"})
 
 
-def test_shipped_config_loads():
-    """The committed config.toml at the tool root must always parse and validate."""
-    from disclosure_verifier.config import load_config
+def test_example_config_loads():
+    """The committed config.example.toml must always parse and validate."""
+    from disclosure_verifier.config import DEFAULT_CONFIG_PATH, load_config
 
-    cfg = load_config()  # DEFAULT_CONFIG_PATH
+    cfg = load_config(DEFAULT_CONFIG_PATH.with_name("config.example.toml"))
     assert len(cfg.evaluators) >= 1
     assert all(e.model_key and e.ctx_tokens > 0 for e in cfg.evaluators)
     assert cfg.adjudicator_model and cfg.lmstudio_url

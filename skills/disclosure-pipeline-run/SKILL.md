@@ -129,7 +129,7 @@ per token (3B active); the 27b Q5_K_P MTP build is also quick.
 
 ## Changing models / params
 
-All machine-local values live in `config.toml` at the tool root (`/home/opencode/src/my-opencode-tomcat/disclosure-verifier/config.toml`): paths, LM Studio URL, per-evaluator model keys/context lengths/input budgets (stage order follows the `[[evaluators]]` list), adjudicator, and generation params. Edit it for permanent changes; CLI flags override individual values for a single run:
+All machine-local values live in local `config.toml` at the tool root (`/home/opencode/src/my-opencode-tomcat/disclosure-verifier/config.toml`): paths, LM Studio URL, per-evaluator model keys/context lengths/input budgets (stage order follows the `[[evaluators]]` list), adjudicator, and generation params. It is gitignored; create it from `config.example.toml` on a new machine. Edit it for permanent changes; CLI flags override individual values for a single run:
 
 - `--config <path>` — alternate config file
 - Per evaluator (name = `name` field in config.toml): `--model-<name>`, `--ctx-<name>`, `--input-budget-<name>-chars`; `--evaluators 27b,cyber` runs a subset (stage letters follow config order)

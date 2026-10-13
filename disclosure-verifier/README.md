@@ -31,8 +31,8 @@ runs are not bit-identical — treat single runs as high-confidence, not absolut
 
 ## Expected input
 
-Campaign dir (default `/home/opencode/workspace/security-scans/tomcat/`, see
-[`config.toml`](config.toml)):
+Campaign dir (configured in local `config.toml`; start by copying
+[`config.example.toml`](config.example.toml)):
 
 - `disclosures/<slug>.md` — one markdown file per disclosure: title, commit
   hash, CVSS vector/score claim, CWE, a ```diff block or reference to a saved
@@ -44,10 +44,15 @@ Campaign dir (default `/home/opencode/workspace/security-scans/tomcat/`, see
 
 ## Configuration & launch
 
-All machine-local values live in [`config.toml`](config.toml) — paths, LM
-Studio URL, per-evaluator model keys/context lengths/input budgets,
-adjudicator, generation params. CLI flags override individual values for a
-single run (`python3 -m disclosure_verifier --help` for the full list).
+All machine-local values live in `config.toml` — paths, LM Studio URL,
+per-evaluator model keys/context lengths/input budgets, adjudicator, generation
+params. `config.toml` is intentionally gitignored; create it from the example:
+
+```bash
+cp config.example.toml config.toml
+```
+
+CLI flags override individual values for a single run (`python3 -m disclosure_verifier --help` for the full list).
 
 ```bash
 # preferred from an agent session: the disclosure-pipeline_launch/_status/_results custom tools

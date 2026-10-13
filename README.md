@@ -16,10 +16,12 @@ tools, and the disclosure-verifier pipeline.
 | `tools/disclosure-pipeline.ts` | opencode custom tools wrapping the pipeline: `disclosure-pipeline_launch/_status/_results` |
 | `commands/campaign-review.md` | opencode slash command `/campaign-review` for reviewing verification outcomes and preparing concise Tomcat security disclosures |
 | `disclosure-verifier/` | The verification pipeline itself — see its [README](disclosure-verifier/README.md) |
+| `LOCAL_SETUP_NOTES.md` | Portable notes distilled from the original local setup |
 
 ## Install
 
 ```bash
+cp disclosure-verifier/config.example.toml disclosure-verifier/config.toml  # edit local paths/models if using the verifier
 ./install.sh              # symlink agents/skills/tools into ~/.config/opencode/, merge AGENTS.fragment.md + opencode.fragment.jsonc
 ./install.sh --uninstall  # remove only symlinks pointing here
 ```
@@ -65,8 +67,9 @@ The command tells the agent to:
 
 ## Notes
 
-- This repo is intentionally **private** and carries machine-local values
-  (LM Studio model IDs, local paths). See [AGENTS.md](AGENTS.md) for the full
-  list before sharing or making it public.
+- This repo is intentionally **private** and still carries machine-local values
+  in agent prompts/skills (LM Studio model IDs, local paths). The disclosure
+  verifier config is now local-only: copy `disclosure-verifier/config.example.toml`
+  to `disclosure-verifier/config.toml` and edit it for your machine.
 - Campaign state lives outside this repo: Tomcat source checkout at
   `~/src/tomcat`, scan outputs under `/home/opencode/workspace/security-scans/tomcat`.
