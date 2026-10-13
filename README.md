@@ -8,8 +8,8 @@ tools, and the disclosure-verifier pipeline.
 
 | Path | What it is |
 |---|---|
-| `agents/tomcat-security-scan.md` | Campaign lead — dispatches serial scan-worker batches over Tomcat classes/packages |
-| `agents/scan-worker.md` | Batch worker — reviews code line-by-line, writes defects reports + JUnit verification tests |
+| `agents/tomcat-security-scan.md` | Campaign lead — dispatches serial tomcat-scan-worker batches over Tomcat classes/packages |
+| `agents/tomcat-scan-worker.md` | Batch worker — reviews code line-by-line, writes defects reports + JUnit verification tests |
 | `skills/tomcat-security-scan/` | Single source of truth for the scan: fleet pattern, ledger format, report structure, test conventions, CodeQL/astnav recipes, security model |
 | `skills/java-ast-nav/` | Tree-sitter-based Java call-graph navigation (`astnav.py`) |
 | `skills/disclosure-pipeline-run/` | How to launch/poll/read the disclosure-verifier campaign (protocol, timing, failure modes) |
@@ -27,7 +27,10 @@ cp disclosure-verifier/config.example.toml disclosure-verifier/config.toml  # ed
 ```
 
 Idempotent; re-run after adding/removing items. Restart opencode to pick up
-new tools/agents/commands (config is loaded once at startup).
+new tools/agents/commands (config is loaded once at startup). If upgrading from
+an older checkout that installed `agents/scan-worker.md`, run
+`./install.sh --uninstall && ./install.sh` once so the old symlink is removed
+and the renamed `tomcat-scan-worker` subagent is installed.
 
 ## Commands
 

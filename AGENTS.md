@@ -6,8 +6,8 @@ disclosure-verifier pipeline.
 
 ## Layout
 
-- `agents/tomcat-security-scan.md` — campaign lead (dispatches serial scan-worker batches)
-- `agents/scan-worker.md` — batch worker that writes defects reports + JUnit verification tests
+- `agents/tomcat-security-scan.md` — campaign lead (dispatches serial tomcat-scan-worker batches)
+- `agents/tomcat-scan-worker.md` — batch worker that writes defects reports + JUnit verification tests
 - `skills/tomcat-security-scan/` — single source of truth: fleet pattern, ledger format, report structure, test conventions, CodeQL/astnav recipes, security-model.md
 - `skills/java-ast-nav/` — tree-sitter-based Java call-graph navigation (astnav.py)
 - `skills/disclosure-pipeline-run/` — multi-model disclosure verification campaign launcher
@@ -25,7 +25,7 @@ re-run after adding/removing items. `./install.sh --uninstall` reverses it
 
 This repo is intentionally PRIVATE and carries real local values:
 
-- `agents/scan-worker.md`, `agents/tomcat-security-scan.md` — frontmatter `model:` lines (LM Studio model IDs)
+- `agents/tomcat-scan-worker.md`, `agents/tomcat-security-scan.md` — frontmatter `model:` lines (LM Studio model IDs)
 - Paths to the local checkout at `/home/opencode/src/tomcat` and scan outputs under `/home/opencode/workspace/security-scans/tomcat`
 
 The disclosure verifier's real `config.toml` is local-only/gitignored; the repo

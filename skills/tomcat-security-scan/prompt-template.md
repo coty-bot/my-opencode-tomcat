@@ -1,9 +1,9 @@
 # Batch worker prompt template
 
 Fill every `{{PLACEHOLDER}}`, delete the guidance comments, and pass the result as the Task tool
-prompt (subagent_type: scan-worker). One class or a small group per batch. The standing worker
+prompt (subagent_type: tomcat-scan-worker). One class or a small group per batch. The standing worker
 discipline — working style, review method, finding format, test conventions, deliverable structure,
-and final-message contract — lives in the `scan-worker` agent definition; do NOT restate it here.
+and final-message contract — lives in the `tomcat-scan-worker` agent definition; do NOT restate it here.
 Pass only the batch-specific scope below.
 
 ---

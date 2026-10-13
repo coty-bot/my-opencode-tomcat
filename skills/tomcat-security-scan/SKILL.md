@@ -7,7 +7,7 @@ description: Use when performing a Tomcat security/defect code review of the Apa
 
 Fleet-based security/defect review of Apache Tomcat source at `/home/opencode/src/tomcat` (git repo, 12.0.x-dev). One subagent worker per batch; each batch covers one class or a small group of classes line by line and produces a report plus JUnit verification tests.
 
-The campaign runs as two agents (defined in `~/.config/opencode/agent/`): a primary `tomcat-security-scan` orchestrator that dispatches serial `scan-worker` subagents using `prompt-template.md`. The standing worker discipline (working style, review method, test conventions) lives in the `scan-worker` agent definition so workers start with it loaded; this file remains the canonical reference for depth.
+The campaign runs as two agents (defined in `~/.config/opencode/agent/`): a primary `tomcat-security-scan` orchestrator that dispatches serial `tomcat-scan-worker` subagents using `prompt-template.md`. The standing worker discipline (working style, review method, test conventions) lives in the `tomcat-scan-worker` agent definition so workers start with it loaded; this file remains the canonical reference for depth.
 
 ## Environment facts (verified)
 
@@ -148,7 +148,7 @@ Report structure (EXACTLY this; match the depth/style of `defects-coyote-http2-F
 
 ## Worker working style (learned from failed runs)
 
-Workers die by exceeding the local model's context window. Subagents run on a **local LM Studio Qwen 27B** with a TIGHT effective context — well under the ~125k of frontier models, and concurrent dispatch overloads it further (see Fleet pattern). Two triggers: **(a)** one batch reads too much source, or **(b)** the fixed upfront cost (SECURITY.md + security-model.md + reference report) plus a large target file leaves no room for analysis/tests. Standing worker discipline now lives in the `scan-worker` agent definition (loaded up front), which lowers this fixed cost versus the old AGENTS.md + webfetch approach. Observed deaths: http2 F7 (~2225-line class → no report), catalina-connector-F1 (died after 1 chunk of a 2-class scope, left "(under construction)" placeholders), catalina-servlets-B (3344-line class → skeleton only; recovered by a finisher with hard caps). The prompt must enforce:
+Workers die by exceeding the local model's context window. Subagents run on a **local LM Studio Qwen 27B** with a TIGHT effective context — well under the ~125k of frontier models, and concurrent dispatch overloads it further (see Fleet pattern). Two triggers: **(a)** one batch reads too much source, or **(b)** the fixed upfront cost (SECURITY.md + security-model.md + reference report) plus a large target file leaves no room for analysis/tests. Standing worker discipline now lives in the `tomcat-scan-worker` agent definition (loaded up front), which lowers this fixed cost versus the old AGENTS.md + webfetch approach. Observed deaths: http2 F7 (~2225-line class → no report), catalina-connector-F1 (died after 1 chunk of a 2-class scope, left "(under construction)" placeholders), catalina-servlets-B (3344-line class → skeleton only; recovered by a finisher with hard caps). The prompt must enforce:
 
 - **Cap batch size by LINES, not "one class":** ≤ ~1500 lines of target source per worker. Split any larger class into multiple sequential batches (e.g. a 3300-line servlet → B1/B2/B3 by line range). A single 2000+ line class WILL die.
 - Every response contains at least one tool call except the final message; assistant text < 30 words per message.
